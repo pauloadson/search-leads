@@ -1,4 +1,4 @@
-# Antigravity Leads - Automação do Google Maps
+# Search Leads - Automação do Google Maps
 
 Uma solução completa e local para buscar e extrair leads comerciais no Google Maps. O sistema conta com um robô de automação inteligente em **Playwright**, um backend seguro em **Node.js (Express + MySQL)** e uma interface de usuário moderna e fluida com painel de logs em tempo real e exportação para planilhas CSV.
 

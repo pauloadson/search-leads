@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Antigravity Leads API",
+    "title": "Search Leads API",
     "version": "1.0.0",
     "description": "API de automação para extração de leads comerciais do Google Maps utilizando Playwright e salvando os registros no MySQL."
   },
