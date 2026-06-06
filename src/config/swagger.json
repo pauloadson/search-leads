@@ -1,0 +1,390 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Antigravity Leads API",
+    "version": "1.0.0",
+    "description": "API de automação para extração de leads comerciais do Google Maps utilizando Playwright e salvando os registros no MySQL."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Servidor de Desenvolvimento Local"
+    }
+  ],
+  "paths": {
+    "/api/scraper/search": {
+      "get": {
+        "summary": "Inicia a captura de leads no Google Maps via Server-Sent Events (SSE)",
+        "description": "Estabelece uma conexão EventSource (SSE) que inicia o robô Playwright. O servidor enviará logs de progresso e os leads encontrados em tempo real à medida que são salvos no MySQL.",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "description": "Palavra-chave do ramo de atividade comercial (Ex: 'Dentistas')",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "required": true,
+            "description": "Cidade ou região a buscar (Ex: 'São Paulo')",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Quantidade limite de leads a extrair",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fluxo contínuo de eventos SSE (text/event-stream). Eventos retornados: `search_started`, `log`, `lead_found`, `completed`, `failed`."
+          },
+          "400": {
+            "description": "Parâmetros query ou location inválidos/ausentes."
+          }
+        }
+      }
+    },
+    "/api/scraper/cancel": {
+      "post": {
+        "summary": "Interrompe manualmente uma automação ativa",
+        "description": "Fecha a instância ativa do navegador Playwright e interrompe a extração da pesquisa selecionada.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "searchId": {
+                    "type": "integer",
+                    "description": "ID da busca registrada a ser cancelada."
+                  }
+                },
+                "required": ["searchId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Busca cancelada com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Busca cancelada com sucesso."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID da busca ausente na requisição."
+          },
+          "404": {
+            "description": "Nenhuma busca ativa encontrada para o ID informado."
+          }
+        }
+      }
+    },
+    "/api/leads": {
+      "get": {
+        "summary": "Lista todos os leads capturados",
+        "description": "Retorna uma lista de leads salvos no banco. Permite filtrar os resultados por ID de busca específica.",
+        "parameters": [
+          {
+            "name": "searchId",
+            "in": "query",
+            "required": false,
+            "description": "ID da pesquisa correspondente para filtrar os leads.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Termo de busca textual para encontrar correspondência em Nome, Telefone, Website, Categoria, Endereço ou Notas no MySQL.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Lead"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno no servidor."
+          }
+        }
+      }
+    },
+    "/api/leads/status": {
+      "put": {
+        "summary": "Atualiza o status de contato, interesse ou notas de múltiplos leads",
+        "description": "Permite gerenciar leads marcando-os em lote como contatados, atualizando seu status de interesse ou escrevendo anotações.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "leadIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "Lista de IDs dos leads a atualizar."
+                  },
+                  "contacted": {
+                    "type": "boolean",
+                    "description": "Indica se a mensagem foi enviada."
+                  },
+                  "interestStatus": {
+                    "type": "string",
+                    "enum": ["pending", "interested", "not_interested"],
+                    "description": "Status de interesse do lead."
+                  },
+                  "notes": {
+                    "type": "string",
+                    "description": "Anotações sobre a abordagem."
+                  }
+                },
+                "required": ["leadIds"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Leads atualizados com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Status dos leads atualizado com sucesso."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parâmetros inválidos."
+          },
+          "500": {
+            "description": "Erro interno no servidor."
+          }
+        }
+      }
+    },
+    "/api/searches": {
+      "get": {
+        "summary": "Obtém o histórico de pesquisas realizadas",
+        "description": "Retorna todas as buscas registradas no banco de dados, ordenadas das mais recentes para as mais antigas.",
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Search"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno no servidor."
+          }
+        }
+      }
+    },
+    "/api/searches/{id}": {
+      "delete": {
+        "summary": "Exclui uma busca e seus leads associados",
+        "description": "Exclui a busca informada no MySQL. Por cascata (Foreign Key Cascade), remove todos os leads associados a ela.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID da pesquisa a ser excluída.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deletado com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Pesquisa e leads associados removidos com sucesso."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID da pesquisa ausente na requisição."
+          },
+          "404": {
+            "description": "Pesquisa não encontrada no banco."
+          },
+          "500": {
+            "description": "Erro interno no servidor."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Lead": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 12
+          },
+          "searchId": {
+            "type": "integer",
+            "example": 2
+          },
+          "name": {
+            "type": "string",
+            "example": "Pizzaria Bela Itália"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "example": "(11) 98888-7777"
+          },
+          "website": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://www.bellapizza.com.br"
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "example": "Rua Central, 450 - Centro, São Paulo - SP"
+          },
+          "rating": {
+            "type": "number",
+            "format": "float",
+            "nullable": true,
+            "example": 4.6
+          },
+          "reviewsCount": {
+            "type": "integer",
+            "example": 154
+          },
+          "category": {
+            "type": "string",
+            "nullable": true,
+            "example": "Pizzaria"
+          },
+          "googleMapsUrl": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://www.google.com/maps/place/..."
+          },
+          "instagram": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://www.instagram.com/pizzariabela"
+          },
+          "contacted": {
+            "type": "boolean",
+            "example": true
+          },
+          "interestStatus": {
+            "type": "string",
+            "enum": ["pending", "interested", "not_interested"],
+            "example": "interested"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "example": "Entramos em contato via Direct. Agendou reunião para terça."
+          },
+          "lastContactAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-06-05T22:30:00.000Z"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-06-05T21:43:27.000Z"
+          }
+        }
+      },
+      "Search": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 2
+          },
+          "query": {
+            "type": "string",
+            "example": "Pizzarias"
+          },
+          "location": {
+            "type": "string",
+            "example": "São Paulo"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-06-05T21:40:00.000Z"
+          }
+        }
+      }
+    }
+  }
+}

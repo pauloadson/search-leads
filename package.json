@@ -1,0 +1,35 @@
+{
+  "name": "search-leads",
+  "version": "1.0.0",
+  "description": "Automação para buscar leads no Google Maps usando Playwright, Express e MySQL",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "cross-env NODE_ENV=test jest --runInBand --detectOpenHandles --forceExit"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mysql2": "^3.9.7",
+    "playwright-chromium": "^1.44.0",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.2",
+    "supertest": "^7.0.0"
+  },
+  "keywords": [
+    "google-maps",
+    "leads",
+    "scraper",
+    "automation",
+    "playwright",
+    "mysql"
+  ],
+  "author": "Paulo Adson",
+  "license": "ISC"
+}

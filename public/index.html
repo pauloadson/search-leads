@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search Leads - Automação do Google Maps</title>
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- CSS Premium Style -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <div class="logo-icon">
+          <i data-lucide="search"></i>
+        </div>
+        <h1>Search <span>Leads</span></h1>
+      </div>
+      <div class="system-status">
+        <span class="status-dot green"></span>
+        <span class="status-text">MySQL Conectado</span>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="app-nav">
+      <button class="nav-btn active" id="tab-scraper-btn">
+        <i data-lucide="cpu"></i>
+        Automação Local
+      </button>
+      <button class="nav-btn" id="tab-database-btn">
+        <i data-lucide="database"></i>
+        Banco de Dados MySQL
+      </button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="app-main">
+      
+      <!-- TAB 1: SCRAPER -->
+      <section class="tab-content active" id="tab-scraper">
+        <div class="grid-layout">
+          <!-- Form Panel -->
+          <div class="panel card form-panel">
+            <h2><i data-lucide="search"></i> Buscar Leads</h2>
+            <form id="scraper-form">
+              <div class="form-group">
+                <label for="input-query">Palavra-chave</label>
+                <div class="input-wrapper">
+                  <i data-lucide="briefcase"></i>
+                  <input type="text" id="input-query" placeholder="Ex: Dentistas, Academias, Salão de Beleza" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="input-location">Localização / Cidade</label>
+                <div class="input-wrapper">
+                  <i data-lucide="navigation"></i>
+                  <input type="text" id="input-location" placeholder="Ex: São Paulo, SP, Brasil" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="input-limit">Limite de Resultados</label>
+                <div class="input-wrapper">
+                  <i data-lucide="sliders"></i>
+                  <input type="number" id="input-limit" value="10" min="1" max="200">
+                </div>
+              </div>
+              
+              <div class="action-buttons">
+                <button type="submit" class="btn btn-primary" id="btn-start">
+                  <i data-lucide="play"></i>
+                  Iniciar Captura
+                </button>
+                <button type="button" class="btn btn-danger hidden" id="btn-stop">
+                  <i data-lucide="square"></i>
+                  Interromper
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Console Terminal -->
+          <div class="panel card terminal-panel">
+            <div class="terminal-header">
+              <div class="terminal-dots">
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
+              </div>
+              <span class="terminal-title"><i data-lucide="terminal"></i> Console de Automação</span>
+              <button class="btn-clear" id="btn-clear-console" title="Limpar console">
+                <i data-lucide="trash-2"></i>
+              </button>
+            </div>
+            <div class="terminal-body" id="console-logs">
+              <div class="log-line system">[SISTEMA] Aguardando parâmetros para iniciar a varredura no Google Maps...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Realtime Leads Table -->
+        <div class="panel card table-panel">
+          <div class="panel-header">
+            <h2><i data-lucide="sparkles"></i> Leads Extraídos em Tempo Real</h2>
+            <div class="header-actions">
+              <span class="counter-badge" id="scraped-counter">0 Leads</span>
+              <button class="btn btn-success" id="btn-export-realtime" disabled>
+                <i data-lucide="download"></i>
+                Exportar CSV
+              </button>
+            </div>
+          </div>
+          <div class="table-container">
+            <table id="table-realtime">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Telefone</th>
+                  <th>Website</th>
+                  <th>Instagram</th>
+                  <th>Categoria</th>
+                  <th>Avaliação</th>
+                  <th>Endereço</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="empty-row">
+                  <td colspan="8" class="text-center">Nenhum lead extraído nesta busca ainda.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: DATABASE VIEW -->
+      <section class="tab-content" id="tab-database">
+        <div class="grid-database">
+          <!-- Searches Sidebar -->
+          <div class="panel card searches-panel">
+            <h2><i data-lucide="history"></i> Histórico de Pesquisas</h2>
+            <div class="search-history-list" id="searches-list">
+              <div class="empty-text">Nenhuma pesquisa no banco de dados.</div>
+            </div>
+          </div>
+
+          <!-- Saved Leads View -->
+          <div class="panel card saved-leads-panel">
+            <div class="panel-header" style="flex-wrap: wrap; gap: 16px;">
+              <div class="header-titles">
+                <h2 id="saved-leads-title">Todos os Leads Salvos</h2>
+                <p class="subtitle" id="saved-leads-subtitle">Mostrando registros persistidos no MySQL</p>
+              </div>
+              <!-- Input de Busca Textual no Banco -->
+              <div class="header-search-wrapper">
+                <i data-lucide="search" style="width: 16px; height: 16px; margin-top: 1px;"></i>
+                <input type="text" id="input-search-db" placeholder="Buscar no banco (nome, tel, notas...)">
+              </div>
+              <div class="header-actions">
+                <span class="counter-badge" id="saved-counter">0 Registros</span>
+                <div class="crm-batch-actions hidden" id="crm-batch-actions">
+                  <button class="btn btn-primary btn-sm" id="btn-batch-contacted" title="Marcar como Contatado"><i data-lucide="message-square"></i> Contatado</button>
+                  <button class="btn btn-success btn-sm" id="btn-batch-interested" title="Teve Interesse"><i data-lucide="smile"></i> Interessado</button>
+                  <button class="btn btn-danger btn-sm" id="btn-batch-uninterested" title="Sem Interesse"><i data-lucide="frown"></i> Sem Interesse</button>
+                </div>
+                <button class="btn btn-success" id="btn-export-saved" disabled>
+                  <i data-lucide="download"></i>
+                  Exportar Selecionados
+                </button>
+              </div>
+            </div>
+            <div class="table-container">
+              <table id="table-saved">
+                <thead>
+                  <tr>
+                    <th style="width: 40px;"><input type="checkbox" id="chk-select-all-saved"></th>
+                    <th>Nome</th>
+                    <th>Telefone</th>
+                    <th>Website</th>
+                    <th>Instagram</th>
+                    <th>Categoria</th>
+                    <th>Avaliação</th>
+                    <th>Endereço</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="empty-row">
+                    <td colspan="10" class="text-center">Selecione uma pesquisa ou carregue todos os leads.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <!-- Controle de Paginação -->
+            <div class="pagination-controls" id="pagination-db">
+              <div class="pagination-info">
+                <span>Itens por página:</span>
+                <select id="select-page-limit" class="select-page-limit">
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50" selected>50</option>
+                  <option value="100">100</option>
+                  <option value="200">200</option>
+                  <option value="300">300</option>
+                  <option value="400">400</option>
+                  <option value="500">500</option>
+                </select>
+                <span id="pagination-status-text">Pág. 1 de 1 (0 total)</span>
+              </div>
+              <div class="pagination-buttons">
+                <button class="btn btn-sm btn-secondary" id="btn-prev-page" disabled>
+                  <i data-lucide="chevron-left"></i> Anterior
+                </button>
+                <button class="btn btn-sm btn-secondary" id="btn-next-page" disabled>
+                  Próximo <i data-lucide="chevron-right"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Search Leads Automation &copy; 2026. Desenvolvido para Captação Inteligente de Clientes por Paulo Adson.</p>
+    </footer>
+  </div>
+
+  <!-- Modal de Notas do Lead (CRM) -->
+  <div class="modal-overlay hidden" id="notes-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i data-lucide="file-text"></i> Anotações do Lead</h3>
+        <button class="btn-close-modal" id="btn-close-notes-modal"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <h4 id="notes-lead-name">Nome do Lead</h4>
+        <p class="subtitle" id="notes-lead-info">Telefone / Categoria</p>
+        <textarea id="notes-textarea" rows="6" placeholder="Escreva observações aqui... Ex: Proposta enviada, direct enviado no Instagram, aguardando retorno."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-cancel-notes">Cancelar</button>
+        <button class="btn btn-primary" id="btn-save-notes">Salvar Anotações</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Javascript Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
