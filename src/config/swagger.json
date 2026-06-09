@@ -125,6 +125,25 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "contacted",
+            "in": "query",
+            "required": false,
+            "description": "Filtrar por leads que já foram contatados (true/false).",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "interestStatus",
+            "in": "query",
+            "required": false,
+            "description": "Filtrar por status de interesse do lead.",
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "interested", "not_interested", "inactive"]
+            }
           }
         ],
         "responses": {
@@ -171,7 +190,7 @@
                   },
                   "interestStatus": {
                     "type": "string",
-                    "enum": ["pending", "interested", "not_interested"],
+                    "enum": ["pending", "interested", "not_interested", "inactive"],
                     "description": "Status de interesse do lead."
                   },
                   "notes": {
@@ -342,7 +361,7 @@
           },
           "interestStatus": {
             "type": "string",
-            "enum": ["pending", "interested", "not_interested"],
+            "enum": ["pending", "interested", "not_interested", "inactive"],
             "example": "interested"
           },
           "notes": {

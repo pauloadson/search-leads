@@ -39,6 +39,10 @@
         <i data-lucide="database"></i>
         Banco de Dados MySQL
       </button>
+      <button class="nav-btn" id="tab-messages-btn">
+        <i data-lucide="message-square"></i>
+        Templates de Mensagem
+      </button>
     </nav>
 
     <!-- Main Content -->
@@ -164,12 +168,35 @@
                 <i data-lucide="search" style="width: 16px; height: 16px; margin-top: 1px;"></i>
                 <input type="text" id="input-search-db" placeholder="Buscar no banco (nome, tel, notas...)">
               </div>
+              
+              <!-- Filtros de Contato e Interesse -->
+              <div class="header-filters">
+                <div class="select-wrapper">
+                  <i data-lucide="message-square"></i>
+                  <select id="filter-contacted" class="filter-select">
+                    <option value="all">Contato: Todos</option>
+                    <option value="true">Contatados</option>
+                    <option value="false">Não Contatados</option>
+                  </select>
+                </div>
+                <div class="select-wrapper">
+                  <i data-lucide="smile"></i>
+                  <select id="filter-interest" class="filter-select">
+                    <option value="all">Interesse: Todos</option>
+                    <option value="pending">Pendente</option>
+                    <option value="interested">Interessado</option>
+                    <option value="not_interested">Sem Interesse</option>
+                    <option value="inactive">Inativo</option>
+                  </select>
+                </div>
+              </div>
               <div class="header-actions">
                 <span class="counter-badge" id="saved-counter">0 Registros</span>
                 <div class="crm-batch-actions hidden" id="crm-batch-actions">
                   <button class="btn btn-primary btn-sm" id="btn-batch-contacted" title="Marcar como Contatado"><i data-lucide="message-square"></i> Contatado</button>
                   <button class="btn btn-success btn-sm" id="btn-batch-interested" title="Teve Interesse"><i data-lucide="smile"></i> Interessado</button>
                   <button class="btn btn-danger btn-sm" id="btn-batch-uninterested" title="Sem Interesse"><i data-lucide="frown"></i> Sem Interesse</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-batch-inactive" title="Marcar como Inativo" style="background-color: hsla(280, 70%, 50%, 0.18); color: hsl(280, 90%, 75%); border-color: hsla(280, 70%, 50%, 0.3);"><i data-lucide="phone-off"></i> Inativo</button>
                 </div>
                 <button class="btn btn-success" id="btn-export-saved" disabled>
                   <i data-lucide="download"></i>
@@ -230,6 +257,65 @@
         </div>
       </section>
 
+      <!-- TAB 3: MESSAGES VIEW -->
+      <section class="tab-content" id="tab-messages">
+        <div class="grid-messages">
+          <!-- Edit Template Panel -->
+          <div class="panel card form-panel">
+            <h2><i data-lucide="message-square"></i> Configurar Mensagem Pronta</h2>
+            <p class="subtitle" style="margin-top: -8px; margin-bottom: 20px; color: var(--text-secondary);">
+              Escreva o modelo de mensagem que deseja enviar. Use as tags dinâmicas para puxar informações de cada lead automaticamente.
+            </p>
+            <form id="message-template-form">
+              <div class="form-group">
+                <label for="template-text">Texto da Mensagem</label>
+                <div class="textarea-wrapper" style="position: relative;">
+                  <textarea id="template-text" rows="12" style="width: 100%; font-family: var(--font-sans); background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; color: var(--text-primary); resize: vertical; line-height: 1.5; outline: none; transition: var(--transition);" placeholder="Digite sua mensagem aqui... Use {name} para o nome do lead."></textarea>
+                </div>
+              </div>
+              
+              <div class="tags-container" style="margin-top: 12px; margin-bottom: 24px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--text-secondary);">Tags Dinâmicas (clique para inserir no texto):</label>
+                <div class="tags-list" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                  <button type="button" class="btn-tag" data-tag="{name}">{name} (Nome)</button>
+                  <button type="button" class="btn-tag" data-tag="{phone}">{phone} (Telefone)</button>
+                  <button type="button" class="btn-tag" data-tag="{website}">{website} (Website)</button>
+                  <button type="button" class="btn-tag" data-tag="{instagram}">{instagram} (Instagram)</button>
+                  <button type="button" class="btn-tag" data-tag="{category}">{category} (Categoria)</button>
+                  <button type="button" class="btn-tag" data-tag="{address}">{address} (Endereço)</button>
+                </div>
+              </div>
+
+              <div class="action-buttons" style="display: flex; gap: 12px;">
+                <button type="submit" class="btn btn-primary" id="btn-save-template">
+                  <i data-lucide="save"></i>
+                  Salvar Template
+                </button>
+                <button type="button" class="btn btn-secondary" id="btn-reset-template">
+                  <i data-lucide="rotate-ccw"></i>
+                  Restaurar Padrão
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Preview Panel -->
+          <div class="panel card preview-panel" style="display: flex; flex-direction: column;">
+            <h2><i data-lucide="eye"></i> Pré-visualização</h2>
+            <p class="subtitle" style="margin-top: -8px; margin-bottom: 20px; color: var(--text-secondary);">
+              Veja como a mensagem ficará formatada com os dados reais do lead ao clicar em copiar nas tabelas.
+            </p>
+            <div class="preview-box" style="flex: 1; background: var(--terminal-bg); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; min-height: 200px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; font-family: var(--font-sans); color: var(--text-primary); line-height: 1.5; font-size: 15px; border-left: 4px solid var(--primary);">
+              <!-- Mensagem formatada fictícia aparecerá aqui -->
+            </div>
+            
+            <div style="margin-top: 16px; padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px dashed var(--border-color); border-radius: var(--radius-sm); font-size: 13px; color: var(--text-muted); display: flex; align-items: flex-start; gap: 8px;">
+              <i data-lucide="info" style="flex-shrink: 0; width: 16px; height: 16px; margin-top: 2px; color: var(--primary);"></i>
+              <span>Ao copiar uma mensagem nas tabelas de leads, qualquer campo indisponível no cadastro (como website ou Instagram ausente) será omitido ou substituído por um texto limpo automaticamente.</span>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
 
     <!-- Footer -->

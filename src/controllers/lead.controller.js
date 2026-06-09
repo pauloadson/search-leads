@@ -16,7 +16,7 @@ const { getPool } = require('../config/database');
  */
 async function getLeads(req, res) {
   try {
-    const { searchId, search, page = 1, limit = 50 } = req.query;
+    const { searchId, search, contacted, interestStatus, page = 1, limit = 50 } = req.query;
     const parsedPage = Math.max(1, parseInt(page, 10) || 1);
     const parsedLimit = Math.max(1, parseInt(limit, 10) || 50);
 
@@ -24,12 +24,16 @@ async function getLeads(req, res) {
     if (searchId) {
       result = await dbService.getLeadsBySearchId(parseInt(searchId, 10), {
         searchTerm: search,
+        contacted,
+        interestStatus,
         page: parsedPage,
         limit: parsedLimit
       });
     } else {
       result = await dbService.getAllLeads({
         searchTerm: search,
+        contacted,
+        interestStatus,
         page: parsedPage,
         limit: parsedLimit
       });

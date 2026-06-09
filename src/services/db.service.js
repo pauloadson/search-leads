@@ -133,24 +133,50 @@ async function saveLead(lead) {
  * @function getAllLeads
  * @param {Object} [options] - Opções de busca e paginação.
  * @param {string|null} [options.searchTerm] - Termo textual para busca (LIKE).
+ * @param {boolean|string|number|null} [options.contacted] - Filtro de status de contato.
+ * @param {string|null} [options.interestStatus] - Filtro de status de interesse.
  * @param {number} [options.page] - Número da página atual (1-based).
  * @param {number} [options.limit] - Quantidade máxima de registros por página.
  * @returns {Promise<{leads: Array<Object>, totalItems: number}>} Leads da página e total totalizador.
  */
-async function getAllLeads({ searchTerm = null, page = 1, limit = 50 } = {}) {
+async function getAllLeads({ searchTerm = null, contacted = null, interestStatus = null, page = 1, limit = 50 } = {}) {
   const pool = getPool();
   const offset = (page - 1) * limit;
 
   let countSql = 'SELECT COUNT(*) as total FROM leads';
   let dataSql = 'SELECT * FROM leads';
+  const whereClauses = [];
   const values = [];
 
   if (searchTerm) {
-    const whereClause = ' WHERE name LIKE ? OR category LIKE ? OR address LIKE ? OR notes LIKE ? OR phone LIKE ?';
-    countSql += whereClause;
-    dataSql += whereClause;
+    whereClauses.push('(name LIKE ? OR category LIKE ? OR address LIKE ? OR notes LIKE ? OR phone LIKE ?)');
     const likeTerm = `%${searchTerm}%`;
     values.push(likeTerm, likeTerm, likeTerm, likeTerm, likeTerm);
+  }
+
+  let contactedVal = null;
+  if (contacted !== undefined && contacted !== null && contacted !== '') {
+    if (contacted === 'true' || contacted === true || contacted === '1' || contacted === 1) {
+      contactedVal = 1;
+    } else if (contacted === 'false' || contacted === false || contacted === '0' || contacted === 0) {
+      contactedVal = 0;
+    }
+  }
+
+  if (contactedVal !== null) {
+    whereClauses.push('contacted = ?');
+    values.push(contactedVal);
+  }
+
+  if (interestStatus && interestStatus !== 'all') {
+    whereClauses.push('interest_status = ?');
+    values.push(interestStatus);
+  }
+
+  if (whereClauses.length > 0) {
+    const whereClauseStr = ' WHERE ' + whereClauses.join(' AND ');
+    countSql += whereClauseStr;
+    dataSql += whereClauseStr;
   }
 
   dataSql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
@@ -172,24 +198,50 @@ async function getAllLeads({ searchTerm = null, page = 1, limit = 50 } = {}) {
  * @param {number} searchId - ID da busca.
  * @param {Object} [options] - Opções de busca e paginação.
  * @param {string|null} [options.searchTerm] - Termo textual para busca (LIKE).
+ * @param {boolean|string|number|null} [options.contacted] - Filtro de status de contato.
+ * @param {string|null} [options.interestStatus] - Filtro de status de interesse.
  * @param {number} [options.page] - Número da página atual (1-based).
  * @param {number} [options.limit] - Quantidade máxima de registros por página.
  * @returns {Promise<{leads: Array<Object>, totalItems: number}>} Leads da página e total totalizador.
  */
-async function getLeadsBySearchId(searchId, { searchTerm = null, page = 1, limit = 50 } = {}) {
+async function getLeadsBySearchId(searchId, { searchTerm = null, contacted = null, interestStatus = null, page = 1, limit = 50 } = {}) {
   const pool = getPool();
   const offset = (page - 1) * limit;
 
   let countSql = 'SELECT COUNT(*) as total FROM leads WHERE search_id = ?';
   let dataSql = 'SELECT * FROM leads WHERE search_id = ?';
+  const whereClauses = [];
   const values = [searchId];
 
   if (searchTerm) {
-    const whereClause = ' AND (name LIKE ? OR category LIKE ? OR address LIKE ? OR notes LIKE ? OR phone LIKE ?)';
-    countSql += whereClause;
-    dataSql += whereClause;
+    whereClauses.push('(name LIKE ? OR category LIKE ? OR address LIKE ? OR notes LIKE ? OR phone LIKE ?)');
     const likeTerm = `%${searchTerm}%`;
     values.push(likeTerm, likeTerm, likeTerm, likeTerm, likeTerm);
+  }
+
+  let contactedVal = null;
+  if (contacted !== undefined && contacted !== null && contacted !== '') {
+    if (contacted === 'true' || contacted === true || contacted === '1' || contacted === 1) {
+      contactedVal = 1;
+    } else if (contacted === 'false' || contacted === false || contacted === '0' || contacted === 0) {
+      contactedVal = 0;
+    }
+  }
+
+  if (contactedVal !== null) {
+    whereClauses.push('contacted = ?');
+    values.push(contactedVal);
+  }
+
+  if (interestStatus && interestStatus !== 'all') {
+    whereClauses.push('interest_status = ?');
+    values.push(interestStatus);
+  }
+
+  if (whereClauses.length > 0) {
+    const whereClauseStr = ' AND ' + whereClauses.join(' AND ');
+    countSql += whereClauseStr;
+    dataSql += whereClauseStr;
   }
 
   dataSql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';

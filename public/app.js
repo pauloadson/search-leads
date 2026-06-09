@@ -20,8 +20,10 @@ let totalDbItems = 0;
 // Elementos do DOM - Geral
 const tabScraperBtn = document.getElementById('tab-scraper-btn');
 const tabDatabaseBtn = document.getElementById('tab-database-btn');
+const tabMessagesBtn = document.getElementById('tab-messages-btn');
 const tabScraper = document.getElementById('tab-scraper');
 const tabDatabase = document.getElementById('tab-database');
+const tabMessages = document.getElementById('tab-messages');
 
 // Elementos do DOM - Scraper (Automação)
 const scraperForm = document.getElementById('scraper-form');
@@ -48,7 +50,10 @@ const crmBatchActions = document.getElementById('crm-batch-actions');
 const btnBatchContacted = document.getElementById('btn-batch-contacted');
 const btnBatchInterested = document.getElementById('btn-batch-interested');
 const btnBatchUninterested = document.getElementById('btn-batch-uninterested');
+const btnBatchInactive = document.getElementById('btn-batch-inactive');
 const inputSearchDb = document.getElementById('input-search-db');
+const filterContacted = document.getElementById('filter-contacted');
+const filterInterest = document.getElementById('filter-interest');
 
 // Elementos DOM de Paginação
 const selectPageLimit = document.getElementById('select-page-limit');
@@ -68,6 +73,13 @@ const notesTextarea = document.getElementById('notes-textarea');
 /* ==========================================================================
    Inicialização e Navegação
    ========================================================================== */
+// Template Padrão de Mensagem
+const DEFAULT_TEMPLATE = `Olá pessoal da {name}, tudo bem?
+
+Me chamo Paulo adson e vim através do Google Maps. Gostaria de saber mais sobre os serviços de vocês.
+
+Aguardo retorno!`;
+
 document.addEventListener('DOMContentLoaded', () => {
   // Inicializa ícones do Lucide
   lucide.createIcons();
@@ -78,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Registra eventos de abas
   tabScraperBtn.addEventListener('click', () => switchTab('scraper'));
   tabDatabaseBtn.addEventListener('click', () => switchTab('database'));
+  tabMessagesBtn.addEventListener('click', () => switchTab('messages'));
   
   // Registra eventos do formulário e console
   scraperForm.addEventListener('submit', handleStartSearch);
@@ -110,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
   btnBatchContacted.addEventListener('click', () => updateBatchStatus({ contacted: true }));
   btnBatchInterested.addEventListener('click', () => updateBatchStatus({ interestStatus: 'interested' }));
   btnBatchUninterested.addEventListener('click', () => updateBatchStatus({ interestStatus: 'not_interested' }));
+  btnBatchInactive.addEventListener('click', () => updateBatchStatus({ interestStatus: 'inactive' }));
 
   // Evento de busca textual com debounce de 400ms (reseta página para 1)
   let searchDebounceTimeout = null;
@@ -126,6 +140,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, 400);
   });
+
+  // Evento de mudança nos filtros de contatado/interesse
+  if (filterContacted) {
+    filterContacted.addEventListener('change', () => {
+      currentDbPage = 1;
+      reloadActiveLeadsList();
+    });
+  }
+
+  if (filterInterest) {
+    filterInterest.addEventListener('change', () => {
+      currentDbPage = 1;
+      reloadActiveLeadsList();
+    });
+  }
 
   // Eventos do seletor e botões de Paginação
   if (selectPageLimit) {
@@ -166,22 +195,33 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 function switchTab(tab) {
   activeTab = tab;
+  
+  // Remove classes active de todas as abas e botões
+  tabScraperBtn.classList.remove('active');
+  tabDatabaseBtn.classList.remove('active');
+  tabMessagesBtn.classList.remove('active');
+  tabScraper.classList.remove('active');
+  tabDatabase.classList.remove('active');
+  tabMessages.classList.remove('active');
+
   if (tab === 'scraper') {
     tabScraperBtn.classList.add('active');
-    tabDatabaseBtn.classList.remove('active');
     tabScraper.classList.add('active');
-    tabDatabase.classList.remove('active');
-  } else {
-    tabScraperBtn.classList.remove('active');
+  } else if (tab === 'database') {
     tabDatabaseBtn.classList.add('active');
-    tabScraper.classList.remove('active');
     tabDatabase.classList.add('active');
     if (inputSearchDb) inputSearchDb.value = ''; // Limpa busca
+    if (filterContacted) filterContacted.value = 'all'; // Reseta filtro
+    if (filterInterest) filterInterest.value = 'all'; // Reseta filtro
     currentDbPage = 1;
     if (selectPageLimit) selectPageLimit.value = '50';
     currentDbLimit = 50;
     loadSearchesHistory();
     loadAllSavedLeads('', 1); // Carrega todos por padrão ao abrir
+  } else if (tab === 'messages') {
+    tabMessagesBtn.classList.add('active');
+    tabMessages.classList.add('active');
+    loadMessagesTab();
   }
 }
 
@@ -356,6 +396,8 @@ function addLeadToTable(tbody, lead, isRealtimeTable = false) {
       tr.className = 'lead-interested';
     } else if (lead.interestStatus === 'not_interested') {
       tr.className = 'lead-uninterested';
+    } else if (lead.interestStatus === 'inactive') {
+      tr.className = 'lead-inactive';
     }
   }
 
@@ -379,18 +421,43 @@ function addLeadToTable(tbody, lead, isRealtimeTable = false) {
     ? `<a href="${lead.googleMapsUrl}" target="_blank" class="table-link" title="Ver no Google Maps"><i data-lucide="map"></i></a>`
     : '';
 
+  // Cria Phone link clicável para cópia rápida
+  const phoneCell = lead.phone
+    ? `<span class="clickable-phone" title="Clique para copiar telefone">${lead.phone}</span>`
+    : '<span class="text-muted">Nenhum</span>';
+
   if (isRealtimeTable) {
     // Tabela em tempo real (8 colunas)
+    const realtimeActionCell = `
+      <div style="display: flex; gap: 8px;">
+        ${mapsCell}
+        <button class="btn-action-icon btn-copy-message success-hover" title="Copiar mensagem personalizada">
+          <i data-lucide="copy"></i>
+        </button>
+      </div>
+    `;
     tr.innerHTML = `
       <td class="lead-name" title="${lead.name}"><strong>${lead.name}</strong></td>
-      <td>${lead.phone || '<span class="text-muted">Nenhum</span>'}</td>
+      <td>${phoneCell}</td>
       <td>${websiteCell}</td>
       <td>${instagramCell}</td>
       <td>${lead.category || '<span class="text-muted">N/A</span>'}</td>
       <td>${ratingText}</td>
       <td title="${lead.address || ''}">${lead.address || '<span class="text-muted">N/A</span>'}</td>
-      <td>${mapsCell}</td>
+      <td>${realtimeActionCell}</td>
     `;
+
+    // Vincula evento para copiar
+    const btnCopy = tr.querySelector('.btn-copy-message');
+    if (btnCopy) {
+      btnCopy.addEventListener('click', () => copyCustomMessageForLead(lead));
+    }
+
+    // Vincula evento para copiar o telefone
+    const phoneSpan = tr.querySelector('.clickable-phone');
+    if (phoneSpan) {
+      phoneSpan.addEventListener('click', () => copyPhoneNumber(lead.phone, lead.name));
+    }
   } else {
     // Tabela do Banco de Dados / CRM (10 colunas)
     // 1. Badge de interesse
@@ -402,6 +469,9 @@ function addLeadToTable(tbody, lead, isRealtimeTable = false) {
     } else if (lead.interestStatus === 'not_interested') {
       badgeClass = 'badge-uninterested';
       badgeText = 'Sem Interesse';
+    } else if (lead.interestStatus === 'inactive') {
+      badgeClass = 'badge-inactive';
+      badgeText = 'Inativo';
     }
 
     const contactedBadge = lead.contacted 
@@ -415,10 +485,13 @@ function addLeadToTable(tbody, lead, isRealtimeTable = false) {
       </div>
     `;
 
-    // 2. Ações customizadas (Notas CRM + Maps)
+    // 2. Ações customizadas (Cópia de mensagem + Notas CRM + Maps)
     const actionCell = `
       <div style="display: flex; gap: 8px;">
         ${mapsCell}
+        <button class="btn-action-icon btn-copy-message success-hover" title="Copiar mensagem personalizada">
+          <i data-lucide="copy"></i>
+        </button>
         <button class="btn-action-icon btn-edit-notes" title="Anotações CRM" data-id="${lead.id}">
           <i data-lucide="file-text"></i>
         </button>
@@ -428,7 +501,7 @@ function addLeadToTable(tbody, lead, isRealtimeTable = false) {
     tr.innerHTML = `
       <td class="text-center"><input type="checkbox" class="lead-select-chk" data-id="${lead.id}"></td>
       <td class="lead-name" title="${lead.name}"><strong>${lead.name}</strong></td>
-      <td>${lead.phone || '<span class="text-muted">Nenhum</span>'}</td>
+      <td>${phoneCell}</td>
       <td>${websiteCell}</td>
       <td>${instagramCell}</td>
       <td>${lead.category || '<span class="text-muted">N/A</span>'}</td>
@@ -445,6 +518,18 @@ function addLeadToTable(tbody, lead, isRealtimeTable = false) {
     // Vincula evento para abrir anotações
     const btnNotes = tr.querySelector('.btn-edit-notes');
     btnNotes.addEventListener('click', () => showNotesModal(lead));
+
+    // Vincula evento para copiar mensagem
+    const btnCopy = tr.querySelector('.btn-copy-message');
+    if (btnCopy) {
+      btnCopy.addEventListener('click', () => copyCustomMessageForLead(lead));
+    }
+
+    // Vincula evento para copiar o telefone
+    const phoneSpan = tr.querySelector('.clickable-phone');
+    if (phoneSpan) {
+      phoneSpan.addEventListener('click', () => copyPhoneNumber(lead.phone, lead.name));
+    }
   }
 
   tbody.appendChild(tr);
@@ -490,6 +575,8 @@ async function loadSearchesHistory() {
       document.querySelectorAll('.search-item').forEach(i => i.classList.remove('active'));
       allItem.classList.add('active');
       if (inputSearchDb) inputSearchDb.value = ''; // Limpa busca anterior
+      if (filterContacted) filterContacted.value = 'all'; // Reseta filtro
+      if (filterInterest) filterInterest.value = 'all'; // Reseta filtro
       loadAllSavedLeads('', 1);
     });
     searchesList.appendChild(allItem);
@@ -522,6 +609,8 @@ async function loadSearchesHistory() {
         document.querySelectorAll('.search-item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
         if (inputSearchDb) inputSearchDb.value = ''; // Limpa busca anterior
+        if (filterContacted) filterContacted.value = 'all'; // Reseta filtro
+        if (filterInterest) filterInterest.value = 'all'; // Reseta filtro
         loadLeadsBySearch(search.id, search.query, search.location, '', 1);
       });
 
@@ -580,7 +669,9 @@ async function loadAllSavedLeads(search = '', page = 1) {
     savedLeadsTitle.textContent = 'Todos os Leads Salvos';
     tableSaved.innerHTML = '<tr><td colspan="10" class="text-center">Carregando registros...</td></tr>';
     
-    const response = await fetch(`/api/leads?search=${encodeURIComponent(search)}&page=${page}&limit=${currentDbLimit}`);
+    const contacted = filterContacted ? filterContacted.value : 'all';
+    const interestStatus = filterInterest ? filterInterest.value : 'all';
+    const response = await fetch(`/api/leads?search=${encodeURIComponent(search)}&contacted=${contacted}&interestStatus=${interestStatus}&page=${page}&limit=${currentDbLimit}`);
     const data = await response.json();
     
     const leads = data.leads || [];
@@ -623,7 +714,9 @@ async function loadLeadsBySearch(searchId, query, location, search = '', page = 
     savedLeadsSubtitle.textContent = `Resultados em ${location}`;
     tableSaved.innerHTML = '<tr><td colspan="10" class="text-center">Carregando registros...</td></tr>';
     
-    const response = await fetch(`/api/leads?searchId=${searchId}&search=${encodeURIComponent(search)}&page=${page}&limit=${currentDbLimit}`);
+    const contacted = filterContacted ? filterContacted.value : 'all';
+    const interestStatus = filterInterest ? filterInterest.value : 'all';
+    const response = await fetch(`/api/leads?searchId=${searchId}&search=${encodeURIComponent(search)}&contacted=${contacted}&interestStatus=${interestStatus}&page=${page}&limit=${currentDbLimit}`);
     const data = await response.json();
     
     const leads = data.leads || [];
@@ -878,6 +971,286 @@ async function handleSaveLeadNotes() {
   } catch (error) {
     console.error('Erro ao salvar notas:', error);
     alert('Erro de rede ao salvar notas.');
+  }
+}
+
+/* ==========================================================================
+   Lógica de Templates de Mensagem e Toasts
+   ========================================================================== */
+
+/**
+ * Carrega a aba de mensagens, definindo o texto do template e a pré-visualização.
+ */
+function loadMessagesTab() {
+  const templateText = document.getElementById('template-text');
+  const currentTemplate = getMessageTemplate();
+  templateText.value = currentTemplate;
+  updateMessagePreview();
+
+  // Garante os binds dos cliques das tags (apenas uma vez para evitar múltiplos listeners)
+  setupTemplateTabEventListeners();
+}
+
+/**
+ * Obtém o template de mensagem configurado, ou o padrão caso não exista.
+ * @returns {string} O template de mensagem.
+ */
+function getMessageTemplate() {
+  return localStorage.getItem('search_leads_msg_template') || DEFAULT_TEMPLATE;
+}
+
+/**
+ * Salva o template de mensagem no localStorage.
+ * @param {string} text - O texto do template.
+ */
+function saveMessageTemplate(text) {
+  localStorage.setItem('search_leads_msg_template', text);
+}
+
+/**
+ * Substitui os marcadores de tags pelos dados dinâmicos do lead.
+ * Se um campo opcional estiver em branco/Nulo, removemos qualquer
+ * string de tag que sobrou ou limpamos o texto para não ficar feio.
+ * @param {string} template - O template de mensagem.
+ * @param {Object} lead - Os dados do lead.
+ * @returns {string} Mensagem formatada.
+ */
+function formatMessage(template, lead) {
+  let msg = template;
+  
+  // Mapeamento de tags para os campos correspondentes
+  const replacements = {
+    '{name}': lead.name || '',
+    '{phone}': lead.phone || '',
+    '{website}': lead.website || '',
+    '{instagram}': lead.instagram || '',
+    '{category}': lead.category || '',
+    '{address}': lead.address || ''
+  };
+  
+  // Substitui cada marcador no texto
+  for (const [tag, val] of Object.entries(replacements)) {
+    msg = msg.replaceAll(tag, val);
+  }
+  
+  return msg;
+}
+
+/**
+ * Atualiza a caixa de pré-visualização na aba de mensagens com dados mock.
+ */
+function updateMessagePreview() {
+  const templateText = document.getElementById('template-text');
+  const previewBox = document.querySelector('.preview-box');
+  if (!templateText || !previewBox) return;
+
+  const dummyLead = {
+    name: 'Empresa Exemplo Ltda',
+    phone: '(11) 99999-9999',
+    website: 'https://www.empresaexemplo.com.br',
+    instagram: 'https://instagram.com/empresaexemplo',
+    category: 'Restaurante',
+    address: 'Av. Paulista, 1000 - Bela Vista, São Paulo - SP'
+  };
+
+  previewBox.textContent = formatMessage(templateText.value, dummyLead);
+}
+
+/**
+ * Configura os listeners específicos da aba de templates de mensagem (formulário, reset, tags).
+ */
+let templateListenersInitialized = false;
+function setupTemplateTabEventListeners() {
+  if (templateListenersInitialized) return;
+
+  const templateText = document.getElementById('template-text');
+  const messageTemplateForm = document.getElementById('message-template-form');
+  const btnResetTemplate = document.getElementById('btn-reset-template');
+  const tagButtons = document.querySelectorAll('.btn-tag');
+
+  // Input listener para live-preview
+  templateText.addEventListener('input', updateMessagePreview);
+
+  // Form submit para salvar
+  messageTemplateForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    saveMessageTemplate(templateText.value);
+    showToast('Salvo!', 'Template de mensagem atualizado com sucesso.', 'success');
+  });
+
+  // Botão restaurar padrão
+  btnResetTemplate.addEventListener('click', () => {
+    if (confirm('Deseja realmente restaurar a mensagem padrão? Suas alterações salvas serão perdidas.')) {
+      templateText.value = DEFAULT_TEMPLATE;
+      saveMessageTemplate(DEFAULT_TEMPLATE);
+      updateMessagePreview();
+      showToast('Restaurado!', 'Template de mensagem padrão restaurado.', 'info');
+    }
+  });
+
+  // Botões de tags rápidas
+  tagButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tag = btn.dataset.tag;
+      const startPos = templateText.selectionStart;
+      const endPos = templateText.selectionEnd;
+      const text = templateText.value;
+
+      // Insere a tag na posição atual do cursor
+      templateText.value = text.substring(0, startPos) + tag + text.substring(endPos, text.length);
+
+      // Posiciona o cursor logo após a tag
+      const newCursorPos = startPos + tag.length;
+      templateText.selectionStart = newCursorPos;
+      templateText.selectionEnd = newCursorPos;
+      
+      templateText.focus();
+      updateMessagePreview();
+    });
+  });
+
+  templateListenersInitialized = true;
+}
+
+/**
+ * Copia a mensagem gerada e personalizada com os dados do lead para o clipboard.
+ * @param {Object} lead - Objeto com os dados do lead.
+ */
+async function copyCustomMessageForLead(lead) {
+  const template = getMessageTemplate();
+  const formattedMsg = formatMessage(template, lead);
+
+  try {
+    await navigator.clipboard.writeText(formattedMsg);
+    showToast(
+      'Copiado!', 
+      `Mensagem personalizada para "${lead.name}" copiada com sucesso.`, 
+      'success'
+    );
+  } catch (err) {
+    console.error('Falha ao usar Clipboard API, tentando fallback...', err);
+
+    // Fallback para navegadores sem HTTPS ou suporte (ex: execCommand)
+    const textarea = document.createElement('textarea');
+    textarea.value = formattedMsg;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    
+    try {
+      const successful = document.execCommand('copy');
+      if (successful) {
+        showToast(
+          'Copiado!', 
+          `Mensagem personalizada para "${lead.name}" copiada.`, 
+          'success'
+        );
+      } else {
+        alert('Não foi possível copiar a mensagem de forma automática.');
+      }
+    } catch (fallbackErr) {
+      console.error('Falha no fallback de cópia:', fallbackErr);
+      alert('Erro ao copiar a mensagem.');
+    }
+    
+    document.body.removeChild(textarea);
+  }
+}
+
+/**
+ * Exibe um banner toast na tela.
+ * @param {string} title - Título do toast.
+ * @param {string} message - Corpo da mensagem.
+ * @param {string} type - Tipo de toast ('success' | 'info').
+ */
+function showToast(title, message, type = 'success') {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+
+  const iconName = type === 'success' ? 'check' : 'info';
+
+  toast.innerHTML = `
+    <div class="toast-icon">
+      <i data-lucide="${iconName}"></i>
+    </div>
+    <div class="toast-content">
+      <div class="toast-title">${title}</div>
+      <div class="toast-message">${message}</div>
+    </div>
+  `;
+
+  container.appendChild(toast);
+  
+  // Recria ícones para renderizar Lucide corretamente
+  lucide.createIcons({
+    attrs: {
+      style: 'width: 14px; height: 14px;'
+    }
+  });
+
+  // Esconde e deleta o toast depois de 4 segundos
+  setTimeout(() => {
+    toast.classList.add('hiding');
+    setTimeout(() => {
+      toast.remove();
+      if (container.children.length === 0) {
+        container.remove();
+      }
+    }, 300);
+  }, 4000);
+}
+
+/**
+ * Copia o número de telefone do lead para a área de transferência.
+ * @param {string} phone - O número de telefone.
+ * @param {string} leadName - O nome do lead.
+ */
+async function copyPhoneNumber(phone, leadName) {
+  if (!phone) return;
+
+  try {
+    await navigator.clipboard.writeText(phone);
+    showToast(
+      'Telefone Copiado!', 
+      `O telefone de "${leadName}" foi copiado para a área de transferência.`, 
+      'success'
+    );
+  } catch (err) {
+    console.error('Falha ao usar Clipboard API para o telefone, tentando fallback...', err);
+
+    const textarea = document.createElement('textarea');
+    textarea.value = phone;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    
+    try {
+      const successful = document.execCommand('copy');
+      if (successful) {
+        showToast(
+          'Telefone Copiado!', 
+          `O telefone de "${leadName}" foi copiado.`, 
+          'success'
+        );
+      } else {
+        alert('Não foi possível copiar o telefone automaticamente.');
+      }
+    } catch (fallbackErr) {
+      console.error('Falha no fallback de cópia de telefone:', fallbackErr);
+      alert('Erro ao copiar o telefone.');
+    }
+    
+    document.body.removeChild(textarea);
   }
 }
 
