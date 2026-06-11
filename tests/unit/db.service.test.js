@@ -173,4 +173,87 @@ describe('Serviço de Banco de Dados (db.service)', () => {
       });
     });
   });
+
+  describe('getLeadById', () => {
+    it('deve retornar null se o lead não for encontrado', async () => {
+      _queryMock.mockResolvedValue([[]]);
+
+      const lead = await dbService.getLeadById(999);
+
+      expect(_queryMock).toHaveBeenCalledTimes(1);
+      expect(_queryMock).toHaveBeenCalledWith('SELECT * FROM leads WHERE id = ?', [999]);
+      expect(lead).toBeNull();
+    });
+
+    it('deve retornar o lead formatado em camelCase se encontrado', async () => {
+      const dbRow = {
+        id: 50,
+        search_id: 2,
+        name: 'Pizzaria Bella',
+        phone: '1933333333',
+        website: 'http://bella.com',
+        address: 'Av Central, 500',
+        rating: '4.50',
+        reviews_count: 85,
+        category: 'Restaurante',
+        google_maps_url: 'http://maps.google.com/500',
+        instagram: 'http://instagram.com/bella',
+        contacted: 0,
+        interest_status: 'pending',
+        notes: 'Gostoso',
+        last_contact_at: null,
+        created_at: '2026-06-05T02:00:00.000Z'
+      };
+      _queryMock.mockResolvedValue([[dbRow]]);
+
+      const lead = await dbService.getLeadById(50);
+
+      expect(_queryMock).toHaveBeenCalledTimes(1);
+      expect(_queryMock).toHaveBeenCalledWith('SELECT * FROM leads WHERE id = ?', [50]);
+      expect(lead).toEqual({
+        id: 50,
+        searchId: 2,
+        name: 'Pizzaria Bella',
+        phone: '1933333333',
+        website: 'http://bella.com',
+        address: 'Av Central, 500',
+        rating: 4.5,
+        reviewsCount: 85,
+        category: 'Restaurante',
+        googleMapsUrl: 'http://maps.google.com/500',
+        instagram: 'http://instagram.com/bella',
+        contacted: false,
+        interestStatus: 'pending',
+        notes: 'Gostoso',
+        lastContactAt: null,
+        createdAt: '2026-06-05T02:00:00.000Z'
+      });
+    });
+  });
+
+  describe('updateLead', () => {
+    it('deve retornar false se nenhum campo válido for fornecido', async () => {
+      const result = await dbService.updateLead(50, { invalidField: 'abc' });
+      expect(result).toBe(false);
+      expect(_queryMock).not.toHaveBeenCalled();
+    });
+
+    it('deve atualizar os campos fornecidos e retornar true se afetar linhas', async () => {
+      _queryMock.mockResolvedValue([{ affectedRows: 1 }]);
+
+      const result = await dbService.updateLead(50, { phone: '11988888888', instagram: 'http://instagram.com/pizzabellasp' });
+
+      expect(result).toBe(true);
+      expect(_queryMock).toHaveBeenCalledTimes(1);
+      
+      const sqlCall = _queryMock.mock.calls[0][0];
+      const paramsCall = _queryMock.mock.calls[0][1];
+
+      expect(sqlCall).toContain('UPDATE leads SET');
+      expect(sqlCall).toContain('phone = ?');
+      expect(sqlCall).toContain('instagram = ?');
+      expect(sqlCall).toContain('WHERE id = ?');
+      expect(paramsCall).toEqual(['11988888888', 'http://instagram.com/pizzabellasp', 50]);
+    });
+  });
 });

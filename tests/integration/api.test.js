@@ -11,7 +11,9 @@ jest.mock('../../src/services/db.service', () => ({
   getAllLeads: jest.fn(() => Promise.resolve({ leads: [{ id: 1, name: 'Lead Integrado' }], totalItems: 1 })),
   getLeadsBySearchId: jest.fn(() => Promise.resolve({ leads: [], totalItems: 0 })),
   getAllSearches: jest.fn(() => Promise.resolve([{ id: 2, query: 'Sorveteria' }])),
-  updateLeadsStatus: jest.fn(() => Promise.resolve())
+  updateLeadsStatus: jest.fn(() => Promise.resolve()),
+  getLeadById: jest.fn(() => Promise.resolve({ id: 1, name: 'Lead Integrado', phone: null })),
+  updateLead: jest.fn(() => Promise.resolve(true))
 }));
 
 jest.mock('../../src/services/scraper.service', () => ({
@@ -104,6 +106,25 @@ describe('Rotas de API - Integração', () => {
       await request(app)
         .put('/api/leads/status')
         .send({ contacted: true })
+        .expect(400);
+    });
+  });
+
+  describe('PATCH /api/leads/:id', () => {
+    it('deve atualizar o lead e retornar status 200', async () => {
+      const response = await request(app)
+        .patch('/api/leads/1')
+        .send({ phone: '11999999999' })
+        .expect(200);
+
+      expect(response.body.message).toContain('atualizado com sucesso');
+      expect(response.body.lead.id).toBe(1);
+    });
+
+    it('deve retornar status 400 se nenhum dado válido for enviado', async () => {
+      await request(app)
+        .patch('/api/leads/1')
+        .send({ invalidField: 'test' })
         .expect(400);
     });
   });

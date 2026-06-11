@@ -229,6 +229,89 @@
         }
       }
     },
+    "/api/leads/{id}": {
+      "patch": {
+        "summary": "Atualiza dados parciais de um lead específico",
+        "description": "Atualiza campos como telefone, instagram, site, etc., de um lead específico pelo seu ID.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID do lead a ser atualizado.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phone": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Número de telefone do lead."
+                  },
+                  "instagram": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Nome do usuário ou link do Instagram."
+                  },
+                  "notes": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Anotações do lead."
+                  },
+                  "contacted": {
+                    "type": "boolean",
+                    "description": "Status de contato."
+                  },
+                  "interestStatus": {
+                    "type": "string",
+                    "enum": ["pending", "interested", "not_interested", "inactive"],
+                    "description": "Status de interesse."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Lead atualizado com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Lead atualizado com sucesso."
+                    },
+                    "lead": {
+                      "$ref": "#/components/schemas/Lead"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID inválido ou nenhum dado válido enviado para atualização."
+          },
+          "404": {
+            "description": "Lead não encontrado."
+          },
+          "500": {
+            "description": "Erro interno no servidor."
+          }
+        }
+      }
+    },
     "/api/searches": {
       "get": {
         "summary": "Obtém o histórico de pesquisas realizadas",

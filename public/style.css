@@ -883,6 +883,26 @@ tr.lead-inactive td {
   box-shadow: 0 0 10px var(--primary-glow);
 }
 
+.modal-body .modal-input {
+  width: 100%;
+  background-color: hsla(224, 71%, 4%, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+  transition: var(--transition);
+}
+
+.modal-body .modal-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+
 .modal-footer {
   display: flex;
   justify-content: flex-end;

@@ -15,6 +15,7 @@ router.post('/scraper/cancel', scraperController.cancelSearch);
 // Rotas de Dados (Leads e Histórico)
 router.get('/leads', leadController.getLeads);
 router.put('/leads/status', leadController.updateStatus);
+router.patch('/leads/:id', leadController.updateLead);
 router.get('/searches', leadController.getSearches);
 router.delete('/searches/:id', leadController.deleteSearch);
 

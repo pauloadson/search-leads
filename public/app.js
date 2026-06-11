@@ -69,6 +69,7 @@ const btnSaveNotes = document.getElementById('btn-save-notes');
 const notesLeadName = document.getElementById('notes-lead-name');
 const notesLeadInfo = document.getElementById('notes-lead-info');
 const notesTextarea = document.getElementById('notes-textarea');
+const notesPhoneInput = document.getElementById('notes-phone-input');
 
 /* ==========================================================================
    Inicialização e Navegação
@@ -923,6 +924,7 @@ function showNotesModal(lead) {
   activeLeadForNotes = lead.id;
   notesLeadName.textContent = lead.name;
   notesLeadInfo.textContent = `${lead.phone || 'Sem telefone'} / ${lead.category || 'Sem Categoria'}`;
+  notesPhoneInput.value = lead.phone || '';
   notesTextarea.value = lead.notes || '';
   
   notesModal.classList.remove('hidden');
@@ -935,6 +937,7 @@ function showNotesModal(lead) {
 function hideNotesModal() {
   notesModal.classList.add('hidden');
   activeLeadForNotes = null;
+  notesPhoneInput.value = '';
   notesTextarea.value = '';
 }
 
@@ -946,9 +949,11 @@ async function handleSaveLeadNotes() {
   if (!activeLeadForNotes) return;
 
   const notesText = notesTextarea.value.trim();
+  const phoneText = notesPhoneInput.value.trim();
 
   try {
-    const response = await fetch('/api/leads/status', {
+    // 1. Salva as anotações usando PUT /api/leads/status
+    const responseNotes = await fetch('/api/leads/status', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
@@ -959,18 +964,35 @@ async function handleSaveLeadNotes() {
       })
     });
 
-    if (response.ok) {
+    if (!responseNotes.ok) {
+      const data = await responseNotes.json();
+      alert(`Erro ao salvar notas: ${data.error}`);
+      return;
+    }
+
+    // 2. Salva o telefone usando PATCH /api/leads/:id
+    const responsePhone = await fetch(`/api/leads/${activeLeadForNotes}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        phone: phoneText || null
+      })
+    });
+
+    if (responsePhone.ok) {
       hideNotesModal();
 
       // Recarrega a tabela ativa mantendo a página
       reloadActiveLeadsList();
     } else {
-      const data = await response.json();
-      alert(`Erro ao salvar notas: ${data.error}`);
+      const data = await responsePhone.json();
+      alert(`Erro ao salvar telefone: ${data.error}`);
     }
   } catch (error) {
-    console.error('Erro ao salvar notas:', error);
-    alert('Erro de rede ao salvar notas.');
+    console.error('Erro ao salvar dados do lead:', error);
+    alert('Erro de rede ao salvar os dados.');
   }
 }
 

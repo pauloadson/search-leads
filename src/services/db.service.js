@@ -313,11 +313,83 @@ async function updateLeadsStatus(leadIds, updateFields) {
   await pool.query(sql, values);
 }
 
+/**
+ * Recupera um lead específico pelo seu ID.
+ * @async
+ * @function getLeadById
+ * @param {number} id - ID do lead.
+ * @returns {Promise<Object|null>} Lead correspondente ou null.
+ */
+async function getLeadById(id) {
+  const pool = getPool();
+  const sql = 'SELECT * FROM leads WHERE id = ?';
+  const [rows] = await pool.query(sql, [id]);
+  if (rows.length === 0) return null;
+  return rowToLead(rows[0]);
+}
+
+/**
+ * Atualiza campos específicos de um lead pelo ID.
+ * @async
+ * @function updateLead
+ * @param {number} id - ID do lead.
+ * @param {Object} fields - Campos a serem atualizados.
+ * @returns {Promise<boolean>} Retorna true se o lead foi atualizado, false caso contrário.
+ */
+async function updateLead(id, fields) {
+  const pool = getPool();
+  
+  const allowedFields = ['phone', 'instagram', 'notes', 'contacted', 'interestStatus', 'website', 'address', 'category'];
+  const fieldsToUpdate = [];
+  const values = [];
+
+  const fieldMapping = {
+    phone: 'phone',
+    instagram: 'instagram',
+    notes: 'notes',
+    contacted: 'contacted',
+    interestStatus: 'interest_status',
+    website: 'website',
+    address: 'address',
+    category: 'category'
+  };
+
+  for (const [key, value] of Object.entries(fields)) {
+    if (allowedFields.includes(key)) {
+      const dbField = fieldMapping[key];
+      fieldsToUpdate.push(`${dbField} = ?`);
+      
+      if (key === 'contacted') {
+        values.push(value ? 1 : 0);
+        if (value) {
+          fieldsToUpdate.push('last_contact_at = ?');
+          values.push(new Date());
+        } else {
+          fieldsToUpdate.push('last_contact_at = ?');
+          values.push(null);
+        }
+      } else {
+        values.push(value);
+      }
+    }
+  }
+
+  if (fieldsToUpdate.length === 0) return false;
+
+  const sql = `UPDATE leads SET ${fieldsToUpdate.join(', ')} WHERE id = ?`;
+  values.push(id);
+
+  const [result] = await pool.query(sql, values);
+  return result.affectedRows > 0;
+}
+
 module.exports = {
   saveSearch,
   saveLead,
   getAllLeads,
   getLeadsBySearchId,
   getAllSearches,
-  updateLeadsStatus
+  updateLeadsStatus,
+  getLeadById,
+  updateLead
 };

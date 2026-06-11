@@ -128,9 +128,68 @@ async function updateStatus(req, res) {
   }
 }
 
+/**
+ * Atualiza dados parciais de um lead específico.
+ * @async
+ * @function updateLead
+ * @param {import('express').Request} req - Objeto de requisição do Express.
+ * @param {import('express').Response} res - Objeto de resposta do Express.
+ * @returns {Promise<void>}
+ */
+async function updateLead(req, res) {
+  try {
+    const { id } = req.params;
+    const { phone, instagram, notes, contacted, interestStatus, website, address, category } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ error: 'O ID do lead é obrigatório.' });
+    }
+
+    const leadId = parseInt(id, 10);
+    if (isNaN(leadId)) {
+      return res.status(400).json({ error: 'ID do lead inválido.' });
+    }
+
+    // Verifica se o lead existe
+    const existingLead = await dbService.getLeadById(leadId);
+    if (!existingLead) {
+      return res.status(404).json({ error: 'Lead não encontrado.' });
+    }
+
+    // Filtra e prepara os campos a atualizar
+    const fieldsToUpdate = {};
+    if (phone !== undefined) fieldsToUpdate.phone = phone;
+    if (instagram !== undefined) fieldsToUpdate.instagram = instagram;
+    if (notes !== undefined) fieldsToUpdate.notes = notes;
+    if (contacted !== undefined) fieldsToUpdate.contacted = contacted;
+    if (interestStatus !== undefined) fieldsToUpdate.interestStatus = interestStatus;
+    if (website !== undefined) fieldsToUpdate.website = website;
+    if (address !== undefined) fieldsToUpdate.address = address;
+    if (category !== undefined) fieldsToUpdate.category = category;
+
+    if (Object.keys(fieldsToUpdate).length === 0) {
+      return res.status(400).json({ error: 'Nenhum campo válido para atualização foi fornecido.' });
+    }
+
+    await dbService.updateLead(leadId, fieldsToUpdate);
+
+    // Recupera o lead atualizado para retornar
+    const updatedLead = await dbService.getLeadById(leadId);
+
+    return res.status(200).json({
+      message: 'Lead atualizado com sucesso.',
+      lead: updatedLead
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar lead:', error);
+    return res.status(500).json({ error: 'Erro interno ao tentar atualizar lead no banco.' });
+  }
+}
+
 module.exports = {
   getLeads,
   getSearches,
   deleteSearch,
-  updateStatus
+  updateStatus,
+  updateLead
 };

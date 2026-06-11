@@ -173,4 +173,65 @@ describe('Controlador de Leads (lead.controller)', () => {
       expect(res.json).toHaveBeenCalledWith({ error: 'O campo "leadIds" deve ser um array não vazio.' });
     });
   });
+
+  describe('updateLead', () => {
+    it('deve retornar status 400 se ID do lead não for numérico ou inválido', async () => {
+      req.params.id = 'abc';
+      req.body = { phone: '123' };
+
+      await leadController.updateLead(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'ID do lead inválido.' });
+    });
+
+    it('deve retornar status 404 se o lead não for encontrado', async () => {
+      req.params.id = '99';
+      req.body = { phone: '123' };
+      dbService.getLeadById.mockResolvedValue(null);
+
+      await leadController.updateLead(req, res);
+
+      expect(dbService.getLeadById).toHaveBeenCalledWith(99);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Lead não encontrado.' });
+    });
+
+    it('deve retornar status 400 se nenhum campo válido para atualização for fornecido', async () => {
+      req.params.id = '5';
+      req.body = { invalidField: 'abc' };
+      dbService.getLeadById.mockResolvedValue({ id: 5, name: 'Lead Teste' });
+
+      await leadController.updateLead(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Nenhum campo válido para atualização foi fornecido.' });
+    });
+
+    it('deve atualizar o lead com sucesso e retornar status 200 com o lead atualizado', async () => {
+      req.params.id = '5';
+      req.body = { phone: '11999999999', instagram: 'http://inst' };
+      
+      const existingLead = { id: 5, name: 'Lead Teste', phone: null };
+      const updatedLead = { id: 5, name: 'Lead Teste', phone: '11999999999', instagram: 'http://inst' };
+      
+      dbService.getLeadById
+        .mockResolvedValueOnce(existingLead)
+        .mockResolvedValueOnce(updatedLead);
+      
+      dbService.updateLead.mockResolvedValue(true);
+
+      await leadController.updateLead(req, res);
+
+      expect(dbService.updateLead).toHaveBeenCalledWith(5, {
+        phone: '11999999999',
+        instagram: 'http://inst'
+      });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: 'Lead atualizado com sucesso.',
+        lead: updatedLead
+      });
+    });
+  });
 });

@@ -334,7 +334,16 @@
       <div class="modal-body">
         <h4 id="notes-lead-name">Nome do Lead</h4>
         <p class="subtitle" id="notes-lead-info">Telefone / Categoria</p>
-        <textarea id="notes-textarea" rows="6" placeholder="Escreva observações aqui... Ex: Proposta enviada, direct enviado no Instagram, aguardando retorno."></textarea>
+        
+        <div style="margin-top: 16px;">
+          <label for="notes-phone-input" style="font-size: 13px; font-weight: 500; color: var(--text-secondary);">Telefone (Instagram/WhatsApp)</label>
+          <input type="text" id="notes-phone-input" class="modal-input" placeholder="Nenhum número cadastrado">
+        </div>
+        
+        <div style="margin-top: 8px;">
+          <label for="notes-textarea" style="font-size: 13px; font-weight: 500; color: var(--text-secondary);">Anotações</label>
+          <textarea id="notes-textarea" rows="4" placeholder="Escreva observações aqui... Ex: Proposta enviada, direct enviado no Instagram, aguardando retorno." style="margin-top: 8px;"></textarea>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" id="btn-cancel-notes">Cancelar</button>
