@@ -280,7 +280,8 @@ body {
   transition: var(--transition);
 }
 
-.input-wrapper input {
+.input-wrapper input,
+.input-wrapper select {
   width: 100%;
   padding: 14px 14px 14px 44px;
   background-color: hsla(224, 71%, 4%, 0.5);
@@ -292,13 +293,15 @@ body {
   transition: var(--transition);
 }
 
-.input-wrapper input:focus {
+.input-wrapper input:focus,
+.input-wrapper select:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 10px var(--primary-glow);
 }
 
-.input-wrapper input:focus + i {
+.input-wrapper input:focus + i,
+.input-wrapper select:focus + i {
   color: var(--primary);
 }
 

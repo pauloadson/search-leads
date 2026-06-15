@@ -108,6 +108,17 @@ async function createTables() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    // 3. Tabela 'message_templates'
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS message_templates (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        is_default TINYINT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
     // Migração automática: Adiciona a coluna instagram caso a tabela já exista e não a contenha
     const [columns] = await connection.query("SHOW COLUMNS FROM leads LIKE 'instagram'");
     if (columns.length === 0) {

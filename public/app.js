@@ -24,6 +24,17 @@ const tabMessagesBtn = document.getElementById('tab-messages-btn');
 const tabScraper = document.getElementById('tab-scraper');
 const tabDatabase = document.getElementById('tab-database');
 const tabMessages = document.getElementById('tab-messages');
+const tabWhatsappBtn = document.getElementById('tab-whatsapp-btn');
+const tabWhatsapp = document.getElementById('tab-whatsapp');
+
+// Elementos do DOM - WhatsApp
+const waForm = document.getElementById('whatsapp-form');
+const waBtnStart = document.getElementById('wa-btn-start');
+const waBtnStop = document.getElementById('wa-btn-stop');
+const waStatusBadge = document.getElementById('wa-status-badge');
+const waProgressText = document.getElementById('wa-progress-text');
+const waProgressBar = document.getElementById('wa-progress-bar');
+let waPollInterval = null;
 
 // Elementos do DOM - Scraper (Automação)
 const scraperForm = document.getElementById('scraper-form');
@@ -85,6 +96,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Inicializa ícones do Lucide
   lucide.createIcons();
   
+  // Carrega templates do banco de dados na inicialização
+  fetchTemplates();
+  
   // Limpa o input de busca ao carregar
   if (inputSearchDb) inputSearchDb.value = '';
 
@@ -92,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
   tabScraperBtn.addEventListener('click', () => switchTab('scraper'));
   tabDatabaseBtn.addEventListener('click', () => switchTab('database'));
   tabMessagesBtn.addEventListener('click', () => switchTab('messages'));
+  tabWhatsappBtn.addEventListener('click', () => switchTab('whatsapp'));
   
   // Registra eventos do formulário e console
   scraperForm.addEventListener('submit', handleStartSearch);
@@ -188,6 +203,10 @@ document.addEventListener('DOMContentLoaded', () => {
   btnCloseNotesModal.addEventListener('click', hideNotesModal);
   btnCancelNotes.addEventListener('click', hideNotesModal);
   btnSaveNotes.addEventListener('click', handleSaveLeadNotes);
+
+  // Registra eventos do WhatsApp
+  if (waForm) waForm.addEventListener('submit', handleStartWhatsApp);
+  if (waBtnStop) waBtnStop.addEventListener('click', handleStopWhatsApp);
 });
 
 /**
@@ -201,9 +220,12 @@ function switchTab(tab) {
   tabScraperBtn.classList.remove('active');
   tabDatabaseBtn.classList.remove('active');
   tabMessagesBtn.classList.remove('active');
+  if (tabWhatsappBtn) tabWhatsappBtn.classList.remove('active');
+  
   tabScraper.classList.remove('active');
   tabDatabase.classList.remove('active');
   tabMessages.classList.remove('active');
+  if (tabWhatsapp) tabWhatsapp.classList.remove('active');
 
   if (tab === 'scraper') {
     tabScraperBtn.classList.add('active');
@@ -223,6 +245,10 @@ function switchTab(tab) {
     tabMessagesBtn.classList.add('active');
     tabMessages.classList.add('active');
     loadMessagesTab();
+  } else if (tab === 'whatsapp') {
+    if (tabWhatsappBtn) tabWhatsappBtn.classList.add('active');
+    if (tabWhatsapp) tabWhatsapp.classList.add('active');
+    pollWhatsAppStatus();
   }
 }
 
@@ -1000,43 +1026,83 @@ async function handleSaveLeadNotes() {
    Lógica de Templates de Mensagem e Toasts
    ========================================================================== */
 
-/**
- * Carrega a aba de mensagens, definindo o texto do template e a pré-visualização.
- */
-function loadMessagesTab() {
-  const templateText = document.getElementById('template-text');
-  const currentTemplate = getMessageTemplate();
-  templateText.value = currentTemplate;
-  updateMessagePreview();
+let templatesList = [];
 
-  // Garante os binds dos cliques das tags (apenas uma vez para evitar múltiplos listeners)
+async function loadMessagesTab() {
+  await fetchTemplates();
   setupTemplateTabEventListeners();
 }
 
-/**
- * Obtém o template de mensagem configurado, ou o padrão caso não exista.
- * @returns {string} O template de mensagem.
- */
+async function fetchTemplates() {
+  try {
+    const response = await fetch('/api/templates');
+    templatesList = await response.json();
+    populateTemplateSelect();
+  } catch (error) {
+    console.error('Erro ao buscar templates:', error);
+  }
+}
+
+function populateTemplateSelect() {
+  const select = document.getElementById('template-select');
+  const nameInput = document.getElementById('template-name');
+  const textArea = document.getElementById('template-text');
+  
+  // Limpa tudo menos o 'new'
+  select.innerHTML = '<option value="new">+ Criar Novo Template</option>';
+  
+  let defaultTemplate = null;
+  templatesList.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = t.name + (t.isDefault ? ' (Padrão)' : '');
+    select.appendChild(opt);
+    
+    if (t.isDefault) defaultTemplate = t;
+  });
+
+  if (templatesList.length > 0) {
+    const active = defaultTemplate || templatesList[0];
+    select.value = active.id;
+    selectTemplate(active);
+  } else {
+    select.value = 'new';
+    nameInput.value = '';
+    textArea.value = DEFAULT_TEMPLATE;
+    updateMessagePreview();
+  }
+  updateTemplateButtons();
+}
+
+function selectTemplate(t) {
+  const nameInput = document.getElementById('template-name');
+  const textArea = document.getElementById('template-text');
+  nameInput.value = t.name;
+  textArea.value = t.content;
+  updateMessagePreview();
+  updateTemplateButtons();
+}
+
+function updateTemplateButtons() {
+  const select = document.getElementById('template-select');
+  const btnDelete = document.getElementById('btn-delete-template');
+  const btnDefault = document.getElementById('btn-set-default');
+  
+  if (select.value === 'new') {
+    btnDelete.style.display = 'none';
+    btnDefault.style.display = 'none';
+  } else {
+    btnDelete.style.display = 'block';
+    const t = templatesList.find(x => x.id == select.value);
+    btnDefault.style.display = (t && t.isDefault) ? 'none' : 'block';
+  }
+}
+
 function getMessageTemplate() {
-  return localStorage.getItem('search_leads_msg_template') || DEFAULT_TEMPLATE;
+  const textArea = document.getElementById('template-text');
+  return textArea ? textArea.value : DEFAULT_TEMPLATE;
 }
 
-/**
- * Salva o template de mensagem no localStorage.
- * @param {string} text - O texto do template.
- */
-function saveMessageTemplate(text) {
-  localStorage.setItem('search_leads_msg_template', text);
-}
-
-/**
- * Substitui os marcadores de tags pelos dados dinâmicos do lead.
- * Se um campo opcional estiver em branco/Nulo, removemos qualquer
- * string de tag que sobrou ou limpamos o texto para não ficar feio.
- * @param {string} template - O template de mensagem.
- * @param {Object} lead - Os dados do lead.
- * @returns {string} Mensagem formatada.
- */
 function formatMessage(template, lead) {
   let msg = template;
   
@@ -1084,31 +1150,87 @@ function updateMessagePreview() {
 let templateListenersInitialized = false;
 function setupTemplateTabEventListeners() {
   if (templateListenersInitialized) return;
+  templateListenersInitialized = true;
 
   const templateText = document.getElementById('template-text');
+  const templateName = document.getElementById('template-name');
+  const templateSelect = document.getElementById('template-select');
   const messageTemplateForm = document.getElementById('message-template-form');
-  const btnResetTemplate = document.getElementById('btn-reset-template');
   const tagButtons = document.querySelectorAll('.btn-tag');
+  const btnDelete = document.getElementById('btn-delete-template');
+  const btnDefault = document.getElementById('btn-set-default');
 
-  // Input listener para live-preview
   templateText.addEventListener('input', updateMessagePreview);
 
-  // Form submit para salvar
-  messageTemplateForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    saveMessageTemplate(templateText.value);
-    showToast('Salvo!', 'Template de mensagem atualizado com sucesso.', 'success');
+  templateSelect.addEventListener('change', (e) => {
+    if (e.target.value === 'new') {
+      templateName.value = '';
+      templateText.value = '';
+      templateName.focus();
+    } else {
+      const t = templatesList.find(x => x.id == e.target.value);
+      if (t) selectTemplate(t);
+    }
+    updateMessagePreview();
+    updateTemplateButtons();
   });
 
-  // Botão restaurar padrão
-  btnResetTemplate.addEventListener('click', () => {
-    if (confirm('Deseja realmente restaurar a mensagem padrão? Suas alterações salvas serão perdidas.')) {
-      templateText.value = DEFAULT_TEMPLATE;
-      saveMessageTemplate(DEFAULT_TEMPLATE);
-      updateMessagePreview();
-      showToast('Restaurado!', 'Template de mensagem padrão restaurado.', 'info');
+  messageTemplateForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = templateSelect.value === 'new' ? null : templateSelect.value;
+    const name = templateName.value;
+    const content = templateText.value;
+    
+    // Se for novo, e não tiver outros templates, define como default automático
+    const isDefault = id ? templatesList.find(x => x.id == id)?.isDefault : (templatesList.length === 0);
+    
+    try {
+      await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name, content, isDefault })
+      });
+      showToast('Salvo', 'Template salvo no banco de dados!', 'success');
+      await fetchTemplates();
+    } catch (err) {
+      showToast('Erro', 'Falha ao salvar template.', 'error');
     }
   });
+
+  if (btnDelete) {
+    btnDelete.addEventListener('click', async () => {
+      const id = templateSelect.value;
+      if (id === 'new') return;
+      if (!confirm('Deseja excluir este template?')) return;
+      
+      try {
+        await fetch(`/api/templates/${id}`, { method: 'DELETE' });
+        showToast('Excluído', 'Template removido.', 'success');
+        await fetchTemplates();
+      } catch (err) {
+        showToast('Erro', 'Falha ao excluir.', 'error');
+      }
+    });
+  }
+
+  if (btnDefault) {
+    btnDefault.addEventListener('click', async () => {
+      const id = templateSelect.value;
+      if (id === 'new') return;
+      const t = templatesList.find(x => x.id == id);
+      try {
+        await fetch('/api/templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...t, isDefault: true })
+        });
+        showToast('Atualizado', 'Template definido como padrão.', 'success');
+        await fetchTemplates();
+      } catch (err) {
+        showToast('Erro', 'Falha ao atualizar.', 'error');
+      }
+    });
+  }
 
   // Botões de tags rápidas
   tagButtons.forEach(btn => {
@@ -1130,8 +1252,6 @@ function setupTemplateTabEventListeners() {
       updateMessagePreview();
     });
   });
-
-  templateListenersInitialized = true;
 }
 
 /**
@@ -1276,3 +1396,127 @@ async function copyPhoneNumber(phone, leadName) {
   }
 }
 
+/* ==========================================================================
+   WhatsApp Automation Logic
+   ========================================================================== */
+
+async function handleStartWhatsApp(e) {
+  e.preventDefault();
+  
+  const batchSize = document.getElementById('wa-batch-size').value;
+  const filterContacted = document.getElementById('wa-filter').value;
+  const typingDelay = document.getElementById('wa-typing-delay').value;
+  const messageDelay = document.getElementById('wa-message-delay').value;
+  
+  const templateTextEl = document.getElementById('template-text');
+  let templateMessage = templateTextEl ? templateTextEl.value : '';
+  
+  if (!templateMessage) {
+    templateMessage = DEFAULT_TEMPLATE;
+  }
+
+  try {
+    const response = await fetch('/api/whatsapp/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batchSize, filterContacted, typingDelay, messageDelay, templateMessage })
+    });
+    
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Erro ao iniciar campanha');
+    
+    showToast('Sucesso', data.message, 'success');
+    pollWhatsAppStatus();
+  } catch (error) {
+    showToast('Erro', error.message, 'error');
+  }
+}
+
+async function handleStopWhatsApp() {
+  try {
+    const response = await fetch('/api/whatsapp/stop', { method: 'POST' });
+    const data = await response.json();
+    
+    if (!response.ok) throw new Error(data.error || 'Erro ao parar campanha');
+    
+    showToast('Parando', data.message, 'warning');
+    pollWhatsAppStatus();
+  } catch (error) {
+    showToast('Erro', error.message, 'error');
+  }
+}
+
+async function pollWhatsAppStatus() {
+  if (waPollInterval) clearInterval(waPollInterval);
+  
+  const checkStatus = async () => {
+    try {
+      const response = await fetch('/api/whatsapp/status');
+      const data = await response.json();
+      
+      updateWhatsAppUI(data);
+      
+      if (!data.isRunning && data.status !== 'running') {
+        clearInterval(waPollInterval);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar status do WhatsApp:', error);
+    }
+  };
+
+  checkStatus();
+  waPollInterval = setInterval(checkStatus, 2000);
+}
+
+function updateWhatsAppUI(statusData) {
+  if (!waBtnStart) return; // Segurança
+
+  if (statusData.isRunning) {
+    waBtnStart.classList.add('hidden');
+    waBtnStop.classList.remove('hidden');
+    waStatusBadge.textContent = 'Em Andamento';
+    waStatusBadge.style.background = 'rgba(16, 185, 129, 0.2)';
+    waStatusBadge.style.color = '#10B981';
+  } else {
+    waBtnStart.classList.remove('hidden');
+    waBtnStop.classList.add('hidden');
+    
+    if (statusData.status === 'error') {
+      waStatusBadge.textContent = 'Erro';
+      waStatusBadge.style.background = 'rgba(239, 68, 68, 0.2)';
+      waStatusBadge.style.color = '#EF4444';
+    } else if (statusData.status === 'finished') {
+      waStatusBadge.textContent = 'Concluído';
+      waStatusBadge.style.background = 'rgba(59, 130, 246, 0.2)';
+      waStatusBadge.style.color = '#3B82F6';
+    } else if (statusData.status === 'stopped') {
+      waStatusBadge.textContent = 'Interrompido';
+      waStatusBadge.style.background = 'rgba(245, 158, 11, 0.2)';
+      waStatusBadge.style.color = '#F59E0B';
+    } else {
+      waStatusBadge.textContent = 'Ocioso';
+      waStatusBadge.style.background = 'rgba(255, 255, 255, 0.1)';
+      waStatusBadge.style.color = 'var(--text-primary)';
+    }
+  }
+
+  const total = statusData.total || 0;
+  const processed = statusData.processed || 0;
+  
+  waProgressText.textContent = `${processed} / ${total} processados`;
+  
+  let percentage = 0;
+  if (total > 0) {
+    percentage = (processed / total) * 100;
+  }
+  waProgressBar.style.width = `${percentage}%`;
+
+  // Atualiza relatório detalhado
+  const sentEl = document.getElementById('wa-stat-sent');
+  const invalidEl = document.getElementById('wa-stat-invalid');
+  const errorsEl = document.getElementById('wa-stat-errors');
+  
+  if (sentEl) sentEl.textContent = statusData.sent || 0;
+  if (invalidEl) invalidEl.textContent = statusData.invalid || 0;
+  if (errorsEl) errorsEl.textContent = statusData.errors || 0;
+}

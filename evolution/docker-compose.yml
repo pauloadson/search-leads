@@ -1,0 +1,20 @@
+version: "3.8"
+services:
+  evolution-api:
+    container_name: evolution_api
+    image: atendai/evolution-api:v1.8.2
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - evolution_instances:/evolution/instances
+      - evolution_store:/evolution/store
+    env_file:
+      - ../.env
+    environment:
+      - SERVER_URL=${EVO_URL:-http://localhost:8080}
+      - AUTHENTICATION_TYPE=apikey
+
+volumes:
+  evolution_instances:
+  evolution_store:

@@ -379,9 +379,177 @@
           }
         }
       }
+    },
+    "/api/whatsapp/start": {
+      "post": {
+        "summary": "Inicia a campanha de envio em lote do WhatsApp",
+        "description": "Inicia o Worker em background que filtra os leads no MySQL e envia mensagens via Evolution API.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "batchSize": {
+                    "type": "integer",
+                    "description": "Tamanho máximo do lote a ser processado",
+                    "example": 10
+                  },
+                  "filterContacted": {
+                    "type": "string",
+                    "description": "Filtro do público alvo: 'nao_contatados', 'contatados' ou 'all'",
+                    "example": "nao_contatados"
+                  },
+                  "typingDelay": {
+                    "type": "integer",
+                    "description": "Tempo em segundos simulando a digitação",
+                    "example": 2
+                  },
+                  "messageDelay": {
+                    "type": "integer",
+                    "description": "Tempo em segundos de pausa entre os envios",
+                    "example": 5
+                  },
+                  "templateMessage": {
+                    "type": "string",
+                    "description": "Template da mensagem com as tags {nome}, etc.",
+                    "example": "Olá {nome}, tudo bem?"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Campanha iniciada." },
+          "400": { "description": "Já existe uma campanha em andamento." }
+        }
+      }
+    },
+    "/api/whatsapp/stop": {
+      "post": {
+        "summary": "Para a automação do WhatsApp atual",
+        "description": "Sinaliza ao Worker para quebrar o loop assim que finalizar o envio atual.",
+        "responses": {
+          "200": { "description": "Parada solicitada." },
+          "400": { "description": "Nenhuma campanha em andamento." }
+        }
+      }
+    },
+    "/api/whatsapp/status": {
+      "get": {
+        "summary": "Obtém o status em tempo real do Worker do WhatsApp",
+        "description": "Retorna detalhes sobre o lote atual, a quantidade enviada e o estado.",
+        "responses": {
+          "200": {
+            "description": "Status recuperado com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "isRunning": { "type": "boolean" },
+                    "status": { "type": "string", "example": "running" },
+                    "processed": { "type": "integer" },
+                    "total": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/create": {
+      "post": {
+        "summary": "Cria a instância do WhatsApp e gera o QR Code (Evolution API)",
+        "description": "Esta rota bate diretamente na Evolution API (Porta 8080). Certifique-se de clicar no cadeado 'Authorize' e inserir a sua API Key da Evolution API antes de executar.",
+        "servers": [
+          {
+            "url": "http://localhost:8080",
+            "description": "Servidor Evolution API"
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "instanceName": {
+                    "type": "string",
+                    "example": "leads_bot"
+                  },
+                  "qrcode": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "integration": {
+                    "type": "string",
+                    "example": "WHATSAPP-BAILEYS"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Instância criada com sucesso. Copie o valor de `base64` gerado na resposta e veja em um conversor base64 para escanear o QR Code."
+          }
+        }
+      }
+    },
+    "/instance/connect/{instanceName}": {
+      "get": {
+        "summary": "Gera o QR Code para conectar uma instância existente",
+        "description": "Caso o painel do Evolution Manager falhe em mostrar o QR Code, use esta rota para forçar a geração dele.",
+        "servers": [
+          {
+            "url": "http://localhost:8080"
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "instanceName",
+            "in": "path",
+            "required": true,
+            "description": "Nome da instância (ex: leads_bot)",
+            "schema": {
+              "type": "string",
+              "default": "leads_bot"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "QR Code em base64 retornado com sucesso."
+          }
+        }
+      }
     }
   },
   "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "apikey",
+        "description": "Insira aqui a chave da Evolution API (ex: 429683C4C977...)"
+      }
+    },
     "schemas": {
       "Lead": {
         "type": "object",

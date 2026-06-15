@@ -47,6 +47,11 @@ DB_NAME=leads_db
 
 # Se deseja ver o navegador do robô trabalhando na tela, mude para: HEADLESS=false
 HEADLESS=true
+
+# Configurações do WhatsApp (Evolution API)
+EVO_URL=http://localhost:8080
+AUTHENTICATION_API_KEY=sua_api_key_aqui
+EVO_INSTANCE=leads_bot
 ```
 > [!NOTE]  
 > Você **não precisa** criar o banco de dados manualmente! Ao iniciar o servidor pela primeira vez, o sistema irá se conectar ao MySQL, criar o banco de dados `leads_db` (ou o nome definido no `.env`) e estruturar as tabelas `searches` e `leads` automaticamente se elas não existirem.
@@ -67,6 +72,30 @@ npm run dev
 
 Após iniciar, acesse a interface web em seu navegador:
 👉 **[http://localhost:3000](http://localhost:3000)**
+
+---
+
+## 📱 Integração com WhatsApp (Evolution API)
+
+Para habilitar a automação de envios de mensagens via WhatsApp, o projeto utiliza a **Evolution API**, rodando isoladamente via Docker.
+
+### 1. Iniciar a API do WhatsApp (Docker)
+Em um novo terminal, navegue até a pasta `evolution` e suba os serviços:
+```bash
+cd evolution
+docker compose up -d
+```
+*Isto irá baixar e iniciar a Evolution API, o Redis e o Postgres localmente (na porta 8080).*
+
+### 2. Criar Instância e Conectar o Celular
+Após a API subir, você precisa criar a instância de comunicação e escanear o QR Code. Isso pode ser feito usando a documentação interativa:
+1. Abra o painel do Swagger: [http://localhost:3000/docs](http://localhost:3000/docs)
+2. Clique no cadeado **Authorize** no topo e insira sua `apikey` (que você configurou no seu arquivo `.env`).
+3. Vá até a rota `/instance/create` no fim da página, clique em **Try it out** e execute.
+4. O resultado trará uma propriedade `base64`. Cole-a na barra de endereço de seu navegador (como uma URL) ou num conversor Base64 para exibir a imagem do QR Code.
+5. Escaneie com seu celular.
+
+Pronto! Agora você já pode usar a aba "WhatsApp" na sua aplicação web para realizar os disparos automáticos de fato.
 
 ---
 

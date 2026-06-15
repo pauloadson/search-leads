@@ -139,7 +139,7 @@ async function saveLead(lead) {
  * @param {number} [options.limit] - Quantidade máxima de registros por página.
  * @returns {Promise<{leads: Array<Object>, totalItems: number}>} Leads da página e total totalizador.
  */
-async function getAllLeads({ searchTerm = null, contacted = null, interestStatus = null, page = 1, limit = 50 } = {}) {
+async function getAllLeads({ searchTerm = null, contacted = null, interestStatus = null, excludeInactive = false, page = 1, limit = 50 } = {}) {
   const pool = getPool();
   const offset = (page - 1) * limit;
 
@@ -171,6 +171,10 @@ async function getAllLeads({ searchTerm = null, contacted = null, interestStatus
   if (interestStatus && interestStatus !== 'all') {
     whereClauses.push('interest_status = ?');
     values.push(interestStatus);
+  }
+
+  if (excludeInactive) {
+    whereClauses.push("(interest_status != 'inactive' OR interest_status IS NULL)");
   }
 
   if (whereClauses.length > 0) {
@@ -383,6 +387,49 @@ async function updateLead(id, fields) {
   return result.affectedRows > 0;
 }
 
+async function getTemplates() {
+  const pool = getPool();
+  const sql = 'SELECT * FROM message_templates ORDER BY is_default DESC, created_at DESC';
+  const [rows] = await pool.query(sql);
+  return rows.map(row => ({
+    id: row.id,
+    name: row.name,
+    content: row.content,
+    isDefault: row.is_default === 1,
+    createdAt: row.created_at
+  }));
+}
+
+async function saveTemplate(template) {
+  const pool = getPool();
+  let sql;
+  let values;
+
+  // Se for definido como default, remove a flag dos outros
+  if (template.isDefault) {
+    await pool.query('UPDATE message_templates SET is_default = 0');
+  }
+
+  if (template.id) {
+    sql = 'UPDATE message_templates SET name = ?, content = ?, is_default = ? WHERE id = ?';
+    values = [template.name, template.content, template.isDefault ? 1 : 0, template.id];
+    await pool.query(sql, values);
+    return template;
+  } else {
+    sql = 'INSERT INTO message_templates (name, content, is_default) VALUES (?, ?, ?)';
+    values = [template.name, template.content, template.isDefault ? 1 : 0];
+    const [result] = await pool.query(sql, values);
+    return { ...template, id: result.insertId };
+  }
+}
+
+async function deleteTemplate(id) {
+  const pool = getPool();
+  const sql = 'DELETE FROM message_templates WHERE id = ?';
+  await pool.query(sql, [id]);
+  return true;
+}
+
 module.exports = {
   saveSearch,
   saveLead,
@@ -391,5 +438,8 @@ module.exports = {
   getAllSearches,
   updateLeadsStatus,
   getLeadById,
-  updateLead
+  updateLead,
+  getTemplates,
+  saveTemplate,
+  deleteTemplate
 };
