@@ -102,6 +102,7 @@ async function startCampaign({ batchSize, typingDelay, messageDelay, filterConta
     const { leads } = await dbService.getAllLeads({
       contacted: contactedParam,
       excludeInactive: true,
+      requirePhone: true,
       limit: batchSize,
       page: 1
     });

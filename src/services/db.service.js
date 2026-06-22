@@ -139,7 +139,7 @@ async function saveLead(lead) {
  * @param {number} [options.limit] - Quantidade máxima de registros por página.
  * @returns {Promise<{leads: Array<Object>, totalItems: number}>} Leads da página e total totalizador.
  */
-async function getAllLeads({ searchTerm = null, contacted = null, interestStatus = null, excludeInactive = false, page = 1, limit = 50 } = {}) {
+async function getAllLeads({ searchTerm = null, contacted = null, interestStatus = null, excludeInactive = false, requirePhone = false, page = 1, limit = 50 } = {}) {
   const pool = getPool();
   const offset = (page - 1) * limit;
 
@@ -177,6 +177,10 @@ async function getAllLeads({ searchTerm = null, contacted = null, interestStatus
     whereClauses.push("(interest_status != 'inactive' OR interest_status IS NULL)");
   }
 
+  if (requirePhone) {
+    whereClauses.push("(phone IS NOT NULL AND phone != '')");
+  }
+
   if (whereClauses.length > 0) {
     const whereClauseStr = ' WHERE ' + whereClauses.join(' AND ');
     countSql += whereClauseStr;
@@ -208,7 +212,7 @@ async function getAllLeads({ searchTerm = null, contacted = null, interestStatus
  * @param {number} [options.limit] - Quantidade máxima de registros por página.
  * @returns {Promise<{leads: Array<Object>, totalItems: number}>} Leads da página e total totalizador.
  */
-async function getLeadsBySearchId(searchId, { searchTerm = null, contacted = null, interestStatus = null, page = 1, limit = 50 } = {}) {
+async function getLeadsBySearchId(searchId, { searchTerm = null, contacted = null, interestStatus = null, requirePhone = false, page = 1, limit = 50 } = {}) {
   const pool = getPool();
   const offset = (page - 1) * limit;
 
@@ -240,6 +244,10 @@ async function getLeadsBySearchId(searchId, { searchTerm = null, contacted = nul
   if (interestStatus && interestStatus !== 'all') {
     whereClauses.push('interest_status = ?');
     values.push(interestStatus);
+  }
+
+  if (requirePhone) {
+    whereClauses.push("(phone IS NOT NULL AND phone != '')");
   }
 
   if (whereClauses.length > 0) {
