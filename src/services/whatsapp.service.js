@@ -23,6 +23,26 @@ function formatPhone(phone) {
   return cleaned;
 }
 
+async function checkNumber(phone) {
+  try {
+    const formatted = formatPhone(phone);
+    const response = await axios.post(`${EVO_URL}/chat/whatsappNumbers/${EVO_INSTANCE}`, {
+      numbers: [formatted]
+    }, {
+      headers: { 'apikey': EVO_API_KEY }
+    });
+    
+    if (response.data && response.data.length > 0) {
+      return response.data[0].exists === true;
+    }
+    return false;
+  } catch (error) {
+    console.error(`[WhatsApp] Erro ao verificar número ${phone}:`, error.message);
+    // Em caso de erro na API de checagem, assumimos true para tentar enviar e não descartar o lead erroneamente
+    return true; 
+  }
+}
+
 async function sendMessage(phone, text, typingDelaySeconds) {
   try {
     const formatted = formatPhone(phone);
@@ -131,6 +151,17 @@ async function startCampaign({ batchSize, typingDelay, messageDelay, filterConta
       const message = templateMessage.replace(/{nome}|{name}/gi, lead.name || '');
 
       console.log(`[WhatsApp Worker] Iniciando envio para ${lead.name} (${lead.phone})...`);
+
+      // 0. Verificar se o número é válido no WhatsApp antes de simular digitação
+      console.log(`[WhatsApp Worker] 🔍 Validando número ${lead.phone}...`);
+      const isNumberValid = await checkNumber(lead.phone);
+      if (!isNumberValid) {
+        console.log(`[WhatsApp Worker] 🔴 Número inválido no WhatsApp: ${lead.phone}. Marcando como Inativo e pulando.`);
+        await dbService.updateLead(lead.id, { interestStatus: 'inactive' });
+        currentStatus.invalid += 1;
+        currentStatus.processed += 1;
+        continue;
+      }
 
       // 1. Aplicar randomização no tempo de digitação (varia até 30%)
       const actualTypingDelay = getRandomDelay(typingDelay, 30);
